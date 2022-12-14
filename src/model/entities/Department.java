@@ -5,7 +5,7 @@ import java.util.Objects;
 
 public class Department implements Serializable {
 
-    public static final long serialVersionUID =1;
+    public static final long serialVersionUID = 1;
     private Integer id;
     private String name;
 
@@ -47,7 +47,10 @@ public class Department implements Serializable {
     }
 
     @Override
-    public String toString(){
-        return "Department [id=" + id + ", name=" + name + "]";
+    public String toString() {
+        return "Department{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
     }
 }
