@@ -11,4 +11,5 @@ public interface DepartmentDao {
     void deleteById(Department department);
     Department findById(Integer id);
     List<Department> findAll();
+    List<Department> findLikeName(String name);
 }
