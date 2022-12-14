@@ -6,10 +6,7 @@ import model.dao.SellerDao;
 import model.entities.Department;
 import model.entities.Seller;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,13 +15,49 @@ import java.util.Map;
 public class SellerDaoJDBC implements SellerDao {
 
     private Connection connection;
-    public SellerDaoJDBC(Connection conn){
-        this.connection= conn;
+
+    public SellerDaoJDBC(Connection conn) {
+        this.connection = conn;
     }
 
     @Override
     public void insert(Seller seller) {
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(
+                    "INSERT INTO seller "
+                            +"(Name, Email, BirthDate, BaseSalary, DepartmentId) "
+                    +"VALUES "
+                            +"(?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS );
 
+            preparedStatement.setString(1, seller.getName());
+            preparedStatement.setString(2,seller.getEmail());
+            preparedStatement.setDate(3, new java.sql.Date(seller.getBirthDate().getTime()));
+            preparedStatement.setDouble(4, seller.getBaseSalary());
+            preparedStatement.setInt(5, seller.getDepartment().getId());
+
+            int rowsAffected = preparedStatement.executeUpdate();
+
+            if (rowsAffected>0){
+                ResultSet resultSet = preparedStatement.getGeneratedKeys();
+
+                if (resultSet.next()){
+                    int id = resultSet.getInt(1);
+                    seller.setId(id);
+                }
+                DB.closeResultSet(resultSet);
+            }
+            else {
+                throw new DbException("Unexpected error! No rows affected!");
+            }
+
+        } catch (SQLException e){
+            throw new DbException(e.getMessage());
+        }
+        finally {
+            DB.closeStatement(preparedStatement);
+        }
     }
 
     @Override
@@ -44,23 +77,22 @@ public class SellerDaoJDBC implements SellerDao {
         try {
             statement = connection.prepareStatement(
                     "SELECT seller.*,department.Name as DepName "
-                    +"FROM seller INNER JOIN department "
-                    +"ON seller.DepartmentId = department.Id "
-                    +"WHERE seller.Id = ?"
+                            + "FROM seller INNER JOIN department "
+                            + "ON seller.DepartmentId = department.Id "
+                            + "WHERE seller.Id = ?"
             );
             statement.setInt(1, id);
             resultSet = statement.executeQuery();
-            if (resultSet.next()){
+            if (resultSet.next()) {
 
                 Department objDepartment = instantiateDepartment(resultSet);
-                Seller objSeller = instantiateSeller(resultSet,objDepartment);
+                Seller objSeller = instantiateSeller(resultSet, objDepartment);
                 return objSeller;
             }
             return null;
-        } catch (SQLException e){
+        } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        }
-        finally {
+        } finally {
             DB.closeStatement(statement);
             DB.closeResultSet(resultSet);
         }
@@ -72,14 +104,14 @@ public class SellerDaoJDBC implements SellerDao {
         objSeller.setId(resultSet.getInt("Id"));
         objSeller.setName(resultSet.getString("Name"));
         objSeller.setEmail(resultSet.getString("Email"));
-        objSeller.getBaseSalary(resultSet.getDouble("BaseSalary"));
+        objSeller.setBaseSalary(resultSet.getDouble("BaseSalary"));
         objSeller.setBirthDate(resultSet.getDate("BirthDate"));
         objSeller.setDepartment(objDepartment);
         return objSeller;
     }
 
     private Department instantiateDepartment(ResultSet resultSet) throws SQLException {
-       Department objDepartment=  new Department();
+        Department objDepartment = new Department();
         objDepartment.setId(resultSet.getInt("DepartmentId"));
         objDepartment.setName(resultSet.getString("DepName"));
         return objDepartment;
@@ -119,15 +151,14 @@ public class SellerDaoJDBC implements SellerDao {
                 list.add(objSeller);
             }
             return list;
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        }
-        finally {
+        } finally {
             DB.closeStatement(preparedStatement);
             DB.closeResultSet(resultSet);
         }
     }
+
     @Override
     public List<Seller> findByDepartment(Department department) {
         PreparedStatement preparedStatement = null;
@@ -165,11 +196,9 @@ public class SellerDaoJDBC implements SellerDao {
                 list.add(objSeller);
             }
             return list;
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        }
-        finally {
+        } finally {
             DB.closeStatement(preparedStatement);
             DB.closeResultSet(resultSet);
         }
