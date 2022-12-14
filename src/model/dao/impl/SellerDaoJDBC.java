@@ -10,7 +10,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SellerDaoJDBC implements SellerDao {
 
@@ -50,7 +53,7 @@ public class SellerDaoJDBC implements SellerDao {
             if (resultSet.next()){
 
                 Department objDepartment = instantiateDepartment(resultSet);
-                Seller objSeller = intantiateSeller(resultSet,objDepartment);
+                Seller objSeller = instantiateSeller(resultSet,objDepartment);
                 return objSeller;
             }
             return null;
@@ -64,7 +67,7 @@ public class SellerDaoJDBC implements SellerDao {
 
     }
 
-    private Seller intantiateSeller(ResultSet resultSet, Department objDepartment) throws SQLException {
+    private Seller instantiateSeller(ResultSet resultSet, Department objDepartment) throws SQLException {
         Seller objSeller = new Seller();
         objSeller.setId(resultSet.getInt("Id"));
         objSeller.setName(resultSet.getString("Name"));
@@ -86,4 +89,51 @@ public class SellerDaoJDBC implements SellerDao {
     public List<Seller> findAll() {
         return null;
     }
+    @Override
+    public List<Seller> findByDepartment(Department department) {
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            preparedStatement = connection.prepareStatement(
+                    "SELECT seller.*,department.Name as DepName "
+                            + "FROM seller INNER JOIN department "
+                            + "ON seller.DepartmentId = department.Id "
+                            + "WHERE DepartmentId = ? "
+                            + "ORDER BY Name");
+
+            preparedStatement.setInt(1, department.getId());
+
+            resultSet = preparedStatement.executeQuery();
+
+            List<Seller> list = new ArrayList<>();
+            Map<Integer, Department> map = new HashMap<>();
+
+            while (resultSet.next()) {            //enquanto o ResultSet tiver linha
+
+                Department objDepartment = map.get(resultSet.getInt("DepartmentId"));
+                //obtem os Department que estão no map sejam eles existentes ou null
+
+                if (objDepartment == null) {        //se o o Department for null
+
+                    objDepartment = instantiateDepartment(resultSet);   //função para obter um Department do banco
+
+                    map.put(resultSet.getInt("DepartmentId"), objDepartment);
+                    //adiciona Department que não existe no map para ser reutilizado
+
+                }
+
+                Seller objSeller = instantiateSeller(resultSet, objDepartment);
+                list.add(objSeller);
+            }
+            return list;
+        }
+        catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        }
+        finally {
+            DB.closeStatement(preparedStatement);
+            DB.closeResultSet(resultSet);
+        }
+    }
+
 }
